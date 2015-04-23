@@ -1,0 +1,263 @@
+<script>
+'use strict';
+
+function initializePicker () {
+
+  // make bare bones color list for the picker
+  var colors = globs.data.colors.map(function(d) {
+    return d.color;
+  });
+  // create a color arranger canvas
+  globs.arranger = globs.arranger || new ColorArranger(globs);
+  globs.arranger.start (colors);
+
+}
+
+
+/**
+ * returns a vanilla color prop to use for getting what keys exist
+ * @return {object} its properties and labels
+ */
+function getPropsTemplate() {
+  var labs = Object.keys(new ColorMath(0).getProperties())
+              .sort(function (a,b) { return a > b ? 1 : (a === b ? 0 : -1);});
+  return {labels:labs, defaultIndex:labs.indexOf(globs.defaults.property)};
+}
+
+/**
+ * build column labels
+*/
+function buildColumnHeadings () { 
+  
+  buildSelect ( {
+      labels:globs.data.labels, 
+      defaultIndex: globs.data.result.defaultIndex
+    },
+    globs.divs.optionColumn,
+    true
+  );
+}
+
+/**
+ * build a new select structure the props
+*/
+function buildPropsSelect () { 
+  buildSelect (
+    getPropsTemplate(globs.divs.optionHeadings.checked),
+    globs.divs.optionProps,
+    false
+  );
+}
+/**
+ * build a new select structure 
+ * @param {object[]} items the items to build the select with
+ * @param {Element} elem of the parent select elem
+ * @param {boolean} valueIsIndex whether to use the index or the value for default
+ */
+function buildSelect (items,elem,valuesIsIndex) {
+
+  reportStatus ("...talking to sheet");
+  // clear whatever is there
+  elem.innerHTML = "";
+      
+  // add the options
+  items.labels.forEach (function (d,i) {
+    var op = elAdd (elem,"option");
+    op.value = valuesIsIndex ? i : d;
+    op.text = d;
+    op.selected =  (i === items.defaultIndex);
+  });
+      
+  elem.value =  valuesIsIndex ? items.defaultIndex : items.labels[items.defaultIndex];
+  reportStatus("...ready");
+
+} 
+function reportStatus(message) {
+   globs.divs.status.innerHTML = message;
+}
+
+/**
+ * this will be called on a change of column or heading status
+ */
+function refreshForm () {
+  
+  // adjust the result based on whether there are headings
+  dealWithData();
+
+  // build a new column list
+  buildColumnHeadings();
+  
+  // kick off a new picker session
+  initializePicker();
+  
+}
+/**
+ * get current colors - get all known colors in the current sheet, along with the headings
+ * @param {boolean} useActive whether to use active cell as the target column
+ * @param {function} funSuccess what to do with a success
+ * @param {function} funFailure what to do with a failure
+ */
+function getColorsGoogle (useActive, funSuccess, funFailure) {
+
+  try {
+    // get the known colors
+    google.script.run
+    .withSuccessHandler( function (data) { 
+
+        funSuccess (data);
+        
+        if (data.error) {
+          funFailure(data.error);
+        }
+        else {
+          funSuccess(data);
+        }
+        
+    })
+    .withFailureHandler( function (e) {
+    
+      funFailure (e);
+      
+    }) // if this is first time we've tried, get the acive column as the default
+    .getSheetData (  useActive ? -1 : parseInt(globs.divs.optionColumn.value,10)   );
+  }
+  catch (err) {
+    reportStatus (err);
+  }
+} 
+
+/**
+ * get current colors - get all known colors in the current sheet, along with the headings
+ */
+function getColors (useActive) {
+  
+  // go off and get new
+  getColorsGoogle ( useActive, 
+    function (data) {
+      // store this for later
+      globs.data.result = data;
+      // redo the form
+      refreshForm();
+    }, 
+    function (error) {
+      reportStatus (e)
+    }
+  );
+
+} 
+/**
+ * apply execute
+ */
+function applyToSheet () {
+  
+  if (globs.arranger) globs.arranger.reset();
+  
+  // deal with the data from the arranger
+  var prepared = prepareResult();
+
+  
+  // go off and get current
+  getColorsGoogle ( true,
+    
+    function (data) {
+      // need to make sure it will fit
+      var ok = (data.dataRange === globs.data.result.dataRange && data.id === globs.data.result.id);
+      if (!ok) {
+        ok = window.prompt ("Current sheet has changed since loading colors. Apply anyway ?") ;
+      }
+      
+      if (ok) {
+        google.script.run
+          .withSuccessHandler ( function (d) {
+            if (d.error) {
+              
+              reportStatus(d.error);
+            }
+            else {
+              // we need to reset everything to the current state of the sheet
+              if (globs.divs.optionClose.checked) google.script.host.close();
+              getColors (false);
+            }
+          })
+          .withFailureHandler ( function (e) {
+         
+            reportStatus (e.message);
+          })
+          .applyColors ( prepared);
+      }
+      
+    }, 
+    function (error) {
+
+      reportStatus (error.message);
+    }
+  );
+
+} 
+
+/**
+ * this is about sorting out the results from a sheet query to take account of whether there was a heading
+ */
+function dealWithData () {
+
+  // redo the colors and labels based on whether there are headings
+    
+    var headingsExist = globs.divs.optionHeadings.checked;
+    
+    // either use the given labels, or make a,b,c type ones
+    globs.data.labels = headingsExist ? 
+        globs.data.result.labels : 
+        globs.data.labels.map(function (d,i) {
+          return columnLabelMaker(i+1);
+        });
+        
+   // if there were no headings, then we have to incorporate the heading color as a data row
+   globs.data.colors = globs.data.result.colors.slice();
+   if (!headingsExist) {
+   
+     // find it and increment the count of appearances
+     var p;
+     for (var i=0; i < globs.data.colors.length ; i++ ) {
+       if (globs.data.colors[i].color === globs.data.result.headingColor) {
+           p = globs.data.colors[i];
+       }
+     }
+     if (!p) {
+       // we dont know about the heading color so add it
+       p = {color:globs.data.result.headingColor , count:0};
+       globs.data.colors.splice(0,0,p);
+     }
+     // increment the number of times we see it
+     p.count ++;
+   }
+
+}
+
+/**
+ * prepare the result for applying to sheet
+ * @return {object[]} the result
+ */
+function prepareResult () {
+  
+  return { 
+      id:globs.data.result.id,
+      headings:globs.divs.optionHeadings.checked,
+      index:parseInt( globs.divs.optionColumn.value, 10) ,
+      contrast:globs.divs.optionContrast.checked,
+      colors:globs.arranger.getColors().shapes.map (function (d) {
+        return {
+          original: {
+            index: d.original.index,
+            color: d.original.color
+          },
+          latest: {
+            index: d.latest.index,
+            color: d.latest.color,
+            textColor: d.latest.cm.getProperties().textColor
+          }
+        };
+      })
+    };
+  
+}
+</script>
