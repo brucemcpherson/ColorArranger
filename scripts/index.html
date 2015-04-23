@@ -1,0 +1,100 @@
+<?!= HtmlService.createHtmlOutputFromFile('styles.css').getContent(); ?>
+  
+  <div class="block">
+  
+    <label for="option-column">
+      Sort column
+    </label>
+    
+    <span style="float:right;">
+      
+      <label for="option-headings">
+        Headings row
+      </label>
+      <input type="checkbox" id="option-headings" checked>
+      
+    </span>
+    
+    <br>
+    <select class="width-100" id="option-column" name="option-column">
+    </select>
+  </div>
+  
+  
+  <div class="block">
+    <label for="option-props">
+      Sort by
+    </label>
+
+    <span style="float:right;">
+    
+      <label for="option-ascending">
+        Ascending
+      </label>
+      <input type="checkbox" id="option-ascending">
+    
+    </span>
+    
+    <br>
+    <select class="width-100" id="option-props">
+    </select>
+
+    <br><br>
+    <button class="action" id="sort-execute-button">Sort</button>
+    <button id="sort-reset-button">Reset</button>
+    <button id="refresh-button">Refresh</button>
+  </div>
+  
+  <div class="block">
+    <label for="picker-grid">
+      Drag to fine tune
+    </label>
+  
+    <br>
+    <canvas id="picker-grid" height="189" width="284">
+      Your browser doesnt support the color arranger
+    </canvas> 
+  
+    <br>
+    <div id="picker-eyeDrop" class="toggle off">
+      <img id="picker-eyeDrop-image" 
+        src="https://googledrive.com/host/0B92ExLh4POiZfkZsSDMwaHZUV3hneWdEbVV5aWVqenpWNjYtc29oYUZyYzVKVE50eFBMQm8/eyeDropper.png">
+    </div>
+    <label for="picker-eyeDrop">
+      Use dropper to merge colors
+    </label>
+  
+    <span id="picker-status" class="status"></span>
+  
+  </div>
+  
+  <div class="block">
+  
+    <input type="checkbox" id="option-contrast" checked>
+    <label for="option-contrast">
+      Apply contrasting text color
+    </label>
+  
+    <br>
+    <input type="checkbox" id="option-close">
+    <label for="option-close">
+      Close sidebar when done
+    </label>
+
+  </div>
+  
+  <div class="block" id="dialog-button-bar">
+    <button class="action" id="sheet-apply-button">Apply</button>
+    <button onclick="google.script.host.close()">Cancel</button>
+  </div>
+
+
+
+<?!= HtmlService.createHtmlOutputFromFile('shared.js').getContent();  ?>
+<?!= HtmlService.createHtmlOutputFromFile('ColorMath.js').getContent(); ?> 
+<?!= HtmlService.createHtmlOutputFromFile('execute.js').getContent(); ?> 
+<?!= HtmlService.createHtmlOutputFromFile('ColorArranger.js').getContent(); ?> 
+<?!= HtmlService.createHtmlOutputFromFile('sorter.js').getContent(); ?> 
+<?!= HtmlService.createHtmlOutputFromFile('main.js').getContent(); ?>  
+
+
