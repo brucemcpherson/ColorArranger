@@ -1,0 +1,63 @@
+<script>
+
+   // available globally
+   var globs;
+  
+  // on doc load
+  window.addEventListener("load", function () {
+    
+   // all global settings
+    globs = {
+      defaults:{ 
+        property:'nearestMatch'
+      },
+      divs:{
+        canvas:el('picker-grid'),
+        status:el('picker-status'),
+        eyeDrop:el('picker-eyeDrop'),
+        eyeDropImage:el('picker-eyeDrop-image'),
+        reset:el('sort-reset-button'),
+        sortExecute:el('sort-execute-button'),
+        optionProps:el('option-props'),
+        optionAscending:el('option-ascending'),
+        optionHeadings:el('option-headings'),
+        optionColumn:el('option-column'),
+        optionContrast:el('option-contrast'),
+        optionApply:el('sheet-apply-button'),
+        optionRefresh:el('refresh-button'),
+        optionClose:el('option-close')
+      },
+      data: {
+        colors: [],
+        result: {},
+        labels: []
+      },
+      arranger: null
+    };
+
+    // this provokes a reget of the data and a replot of the colors
+    globs.divs.optionColumn.addEventListener("change" , function () {
+        getColors(false);
+      } ,false);
+    
+    // this provokes a reorganization of the colors and headings
+    globs.divs.optionHeadings.addEventListener("change" , refreshForm ,false);
+    
+    // this provokes a reget of the data
+    globs.divs.optionRefresh.addEventListener("click" , function () {
+        getColors(false);
+      } ,false);
+    
+    // initial populate, will ask the sheet for which column to use
+    getColors(true);
+    
+    // create the supported property drop down
+    buildPropsSelect();    
+    
+    // this applies all the work back to the sheet
+    globs.divs.optionApply.addEventListener("click" , applyToSheet ,false);
+
+    
+  });
+  
+</script>
