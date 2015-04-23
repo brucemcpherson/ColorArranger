@@ -1,0 +1,518 @@
+<script>
+'user strict';
+/**
+  * this is a canvas picksorter for interactively sorting colors
+  * @param {object} settings - the settings
+  * @return {ColorArranger} self
+  */
+
+function ColorArranger(options) {
+  
+  var self = this;
+
+  // default settings
+  var settings = extend ( options || {}, {
+      grid: {
+        height:0,
+        width:0,
+        lines: {
+          width:2,
+          color:'#eee'
+        },
+        max: {
+          rows:8,
+          columns:12
+        },
+      },
+      divs:{
+      }
+    });
+   
+    // initial data settings
+    var data = {
+      shapes: null,
+      colors: null,
+      selectedColors:null
+    };
+    
+    // initial control settings
+    var control = {
+      dragging:null,
+      eyeDropping:{
+        active:false,
+        dropper: null
+      },
+      ctx: null, 
+      bound: null,
+      colors: {
+        ghost:"#FFFFFF",
+        eyeDrop:"#FFFFFF"
+      },
+      mousePosition: {
+        x:undefined,
+        y:undefined
+      },
+      eyeDropImageOffset:{
+        x:0,
+        y:0
+      },
+      cursor: {
+        normal:'default',
+        drag:'move',
+        eyeDropGrab:'-webkit-grab',
+        eyeDrop:'cell',
+        out:'not-allowed'
+      },
+      classes: {
+        toggle: {
+          on:"toggle on",
+          off:"toggle off"
+        }
+      },
+      requestAnimationFrame: window.requestAnimationFrame || 
+          window.mozRequestAnimationFrame || 
+          window.webkitRequestAnimationFrame ||
+          window.msRequestAnimationFrame     // http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
+    };
+    
+    
+    // defauls are the same as the canvas area
+    settings.grid.height = settings.grid.height || settings.divs.canvas.height;
+    settings.grid.width = settings.grid.height || settings.divs.canvas.width;
+    
+    // check that canvas works
+    if (!settings.divs.canvas.getContext) {
+      settings.divs.canvas ("failed to initialize canvas");
+    }
+    
+    // check we can do dragging hack
+    if (!control.requestAnimationFrame) {
+      settings.divs.canvas ("browser doesnt support animation");
+    }
+    
+    // browser is ok for all this stuff so let's go
+    control.ctx = settings.divs.canvas.getContext("2d");    
+    control.bound =  settings.divs.canvas.getBoundingClientRect();
+    
+    // setup event handlers
+    setEventHandlers();
+    
+    
+    /** 
+     * this is the execution entry point - 
+     * @param {string[]} arrayOfColors an array of colors
+     * @param {object[]) arrayOf colors with their new values and sort order
+     */
+    self.start = function (arrayOfColors) {
+      // ----------- set up shapes -----------
+
+      data.colors = arrayOfColors ? arrayOfColors.slice() : [];
+      restart();
+      return self;
+    };
+    
+    /**
+     * restart the colorarranger
+     */
+    function restart() {
+      
+      data.selectedColors = data.colors;
+      data.shapes = makeShapes(data.selectedColors);
+      
+      // render them
+      renderShapes ();
+    
+    }
+    /** 
+     * get the sorted colors
+     * @param {object[]) arrayOf colors with their new values and sort order
+     */
+    self.getColors = function () {
+      return data;
+    };
+    
+    function setEventHandlers() {
+      
+      // -------- button events -------
+      settings.divs.eyeDrop.addEventListener ("click", function () {
+     
+        if (control.eyeDropping.active) {
+          eyeDropReset();
+        }
+        else {
+          control.eyeDropping.active = true;
+          settings.divs.eyeDrop.className = control.classes.toggle.on;
+        }
+          
+      });
+      
+      // do a sort
+      settings.divs.sortExecute.addEventListener ("click", function () {
+        sortShapes (settings.divs.optionProps.value, data.shapes , settings.divs.optionAscending.checked);
+        renderShapes();  
+      });
+      
+      settings.divs.reset.addEventListener ("click", function () {
+        self.reset();
+        restart();
+      });
+      
+      /**
+      * abandon all dragging etc.
+      */
+      self.reset = function () {
+        eyeDropReset();
+        dragReset();
+       
+      };
+      
+      function eyeDropReset () {
+        control.eyeDropping.active = false;
+        control.eyeDropping.dropper = null;
+        settings.divs.eyeDrop.className = control.classes.toggle.off;
+        settings.divs.eyeDrop.style.backgroundColor = control.colors.eyeDrop;
+
+      }
+      // -------- muose events ------
+      // keep an eye on where we are
+      window.addEventListener("mousemove", function(e) {
+        
+        // so we can always know the current mouse position for anumation
+        control.mousePosition.x = e.clientX;
+        control.mousePosition.y = e.clientY;
+        
+        // centralize all cursor changing activities here
+        if(control.dragging) {
+          document.body.style.cursor = mouseOutsideCanvas()  ?  control.cursor.out : control.cursor.normal;
+          settings.divs.canvas.style.cursor = control.cursor.drag;
+        }
+        else if (control.eyeDropping.active) { 
+          document.body.style.cursor = mouseOutsideCanvas()  ?  control.cursor.normal : control.cursor.normal;
+          settings.divs.canvas.style.cursor = control.eyeDropping.dropper ? control.cursor.eyeDrop : control.cursor.eyeDropGrab;
+        }
+        else {
+          document.body.style.cursor = settings.divs.canvas.style.cursor = control.cursor.normal;
+        }
+
+        
+      },false);
+      
+      // finished dragging pr eyedropping event
+      window.addEventListener("mouseup", function(e) {
+       
+         
+        if(mouseOutsideCanvas()) { 
+          // the idea here is if the mouse is released outside the canvas, its an abandon operation
+          if ( control.dragging ) {
+            control.dragging.dragee.active.color = control.dragging.dragee.latest.color;
+            control.dragging = null;
+            renderShapes ();
+          }
+          
+          // abandon dropping operation
+          if (control.eyeDropping.active) {
+            control.eyeDropping.dropper = null;
+          }
+          
+        } 
+        
+        else {
+          // if we're dragging its time to move the item here
+          if (control.dragging) {
+            dragEnd ();
+          }
+          
+          // if we have eyedropping turned on
+          if (control.eyeDropping.active) {
+
+            // i'm dropping  a color here
+            if (control.eyeDropping.dropper) {
+              dropEnd();
+            }
+            
+            // I'm getting a color to drop
+            else {
+              dropStart();
+            }
+
+          }
+        }
+        
+        
+      },false);
+      
+      //starting drag event
+      settings.divs.canvas.addEventListener("mousedown", function(e) {
+        
+        if (!control.eyeDropping.active && !mouseOutsideCanvas()) {
+          dragStart ();
+        }
+        
+      },false);
+      
+    }
+    
+     /**
+     * this means that the eyeDrop is in action- we need to sample the existing item
+     * @param {Event} e mousedown event
+     * @return {Shape} 
+     */
+    function dropStart () {
+      // find the shape we are over
+      var dropper = findShapeFromXY ();
+      
+      // if we'ere over one, we'll need all this later
+      if (dropper) {
+        control.eyeDropping.dropper = dropper;
+        settings.divs.eyeDrop.style.backgroundColor = dropper.latest.color;
+      }
+      
+      return dropper;
+    }
+     /**
+     * we're doing an eyeDrop operation - put the saved color here
+     * @param {Event} e mpuseup event
+     */
+    function dropEnd () {
+
+      // this is the shape we are over and will be displacing
+      var dropee = findShapeFromXY ();
+      
+      // check that we have an active drop
+      if (dropee && control.eyeDropping.active) {
+         
+        // color coming from here
+        var dropper = control.eyeDropping.dropper;
+        
+        // going here
+        dropee.active.color = dropee.latest.color = dropper.latest.color;
+        dropee.latest.cm = dropper.latest.cm;
+        
+        // re-render the shape
+        shapeRect (dropee);
+        
+      }
+    }
+    
+    /**
+     * create rect using selected color and restore
+     * @param {object} shape a shape
+     */
+    function shapeRect(d) {
+      
+        control.ctx.save();
+        control.ctx.fillStyle = d.active.color;
+        control.ctx.fillRect(d.x, d.y, d.width, d.height);
+        control.ctx.beginPath();
+        control.ctx.lineWidth = settings.grid.lines.width;
+        control.ctx.strokeStyle = settings.grid.lines.color;
+        control.ctx.rect(d.x, d.y, d.width, d.height);
+        control.ctx.stroke();
+        control.ctx.restore();
+    }
+
+    /**
+     * hack for dragging in canvas .. mousedown is beginning of a drag
+     * @param {Event} e mousedown event
+     * @return {Shape} 
+     */
+    function dragStart () {
+      // find the shape we are over
+      var dragee = findShapeFromXY ();
+      
+      // if we'ere over one, we'll need all this later
+      if (dragee) {
+        control.dragging = {
+          start: { 
+            x: control.mousePosition.x,
+            y: control.mousePosition.y
+          },
+          dragee: dragee
+        };
+        // during drag, leave behind a shape the same color as the canvas
+        dragee.active.color = control.colors.ghost;
+
+        // kick off the animation
+        control.requestAnimationFrame.call (window, dragTranslate);
+        
+      }
+      
+      return dragee;
+    }
+    /**
+     * hack for dragging in canvas .. mouseup is end of a drag
+     * @param {Event} e mpuseup event
+     */
+    function dragEnd () {
+
+      // this is the shape we are over and will be displacing
+      var dragTo = findShapeFromXY ();
+      
+      // check that we have an active drag
+      if (control.dragging) {
+        
+        var dragee = control.dragging.dragee;
+        // first get rid of the shape being moved
+        data.shapes.splice (dragee.latest.index,1);
+        
+        // now insert it at the new point
+        data.shapes.splice (dragTo ? dragTo.latest.index : data.shapes.length,0,dragee);
+        
+        // reset everyones index
+        data.shapes.forEach (function(d,i){
+          d.latest.index = i;
+        });
+        // set the color back to normal
+        dragee.active.color = dragee.latest.color;
+        
+        dragReset();
+        
+        // clear the canvas and re-render the shapes
+        renderShapes ();
+        
+
+      }
+    }
+    
+    function dragReset () {
+        // dragging is over
+        control.dragging= null;
+    }
+    // ------------ called by request animation to replot the canvas -----
+    function dragTranslate() {
+      
+  
+      // need this test in case dragging has ended between anumation frames
+      if (control.dragging) {
+        
+        // clear the canvas and re-render the shapes
+        renderShapes();
+        
+        // always keep the context state the same as we arrived
+        control.ctx.save();
+        
+        // always show dragee on top
+        control.ctx.globalCompositeOperation = "source-over";
+        
+        // the shape being dragged recorded the initial mouse position when it was selected.
+        // we just need to draw it again in the new spot, translated by the difference between here and there
+        control.ctx.translate(
+          control.mousePosition.x -control.dragging.start.x , 
+          control.mousePosition.y -control.dragging.start.y 
+        );
+        
+      // and redo the shape
+        var d = control.dragging.dragee;
+        control.ctx.fillStyle = d.latest.color;
+        control.ctx.fillRect(d.x, d.y, d.width, d.height);
+        
+        // restore context to how we got it
+        control.ctx.restore();
+        
+        // schedule the next animation frame
+        control.requestAnimationFrame.call (window, dragTranslate);
+      }
+    }
+
+
+    /**
+     * @param {object} offset optional curpose pos offset to account for pointer
+     */
+    function findShapeFromXY () {
+
+      
+      // need to adapt mouseposition relative to canvas position
+      var xy = mouseToCanvasPos();
+      
+      // could calculate, buts lets just look
+      for (var i=0; i < data.shapes.length ;i++) {
+        var shape = data.shapes[i];
+        if (xy.x >= shape.x && xy.x < shape.x + shape.width && 
+            xy.y >= shape.y && xy.y < shape.y + shape.height) {
+              return shape ;
+        }
+      }
+      return undefined;
+    }
+    
+    /**
+     * @param {Event} e object
+     * @return {object} x,y coord translation
+     */
+    function mouseToCanvasPos () {
+      return { 
+        x: control.mousePosition.x - control.bound.left,
+        y: control.mousePosition.y - control.bound.top
+      };
+    }
+    /**
+     * @param {Event} e object
+     * @return {boolean} whether mouse is over convas
+     */
+    function mouseOutsideCanvas () {
+      
+      var p = control.mousePosition;
+      // if the current position is to the left of or above then we're outside
+      return (p.x < control.bound.left || 
+        p.y < control.bound.top ||
+        p.x > control.bound.right ||
+        p.y > control.bound.bottom
+      );
+
+    }
+    
+    /**
+    * render the shapes 
+    */
+    function renderShapes() {
+
+      settings.divs.status.innerHTML = "";
+      control.ctx.clearRect(0, 0, control.bound.width, control.bound.height);
+      
+      data.shapes.forEach ( function(d,i) {
+        d.x = (i % settings.grid.max.columns) * d.width;
+        d.y = Math.floor(i/settings.grid.max.columns) * d.height;
+        if (d.x < control.bound.width && d.y < control.bound.height) {        
+          shapeRect (d);
+        }
+        else {
+          settings.divs.status.innerHTML = "..warning- no room to show all colors";
+        }
+        
+      });
+      
+      
+    }
+    
+    /**
+    * make the shapes 
+    * @return {object[]} array of shape objects
+    */
+    function makeShapes () {
+
+      var dWidth = control.bound.width / settings.grid.max.columns;
+      var dHeight = control.bound.height / settings.grid.max.rows;
+    
+    // attach colormath to every shape
+
+      return data.colors.map ( function (d,i) {
+        return { 
+          latest: {             // - the latest edited values
+            color: d,
+            index: i,
+            cm: new ColorMath (d)
+          },
+          original: {          // - how the data arrived
+            color: d,
+            index: i
+          },
+          active: {            // - will always be plotted by renderer
+            color: d
+          },
+          width: dWidth,
+          height:dHeight
+        };
+      });
+    }
+  }
+</script>
