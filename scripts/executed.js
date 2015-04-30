@@ -8,9 +8,7 @@ function getSheetData (target) {
   
   var sh = SpreadsheetApp.getActiveSheet();   
   var currentColumn  = (target >= 0 ? target +1  : sh.getActiveCell().getColumn());
-  Logger.log(target);
-  Logger.log(currentColumn );
-  
+
   var result = {
     defaultIndex: currentColumn -1,
     error:"",
