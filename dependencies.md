@@ -1,5 +1,5 @@
 # Google Apps Script Project: ColorArranger
-This repo (ColorArranger) was automatically updated on 30 April 2015 12:42:50 BST by GasGit
+This repo (ColorArranger) was automatically updated on 02 May 2015 22:59:17 BST by GasGit
 
 For more information see the [desktop liberation site](http://ramblings.mcpher.com/Home/excelquirks/drivesdk/gettinggithubready "desktop liberation") or [contact me on G+](https://plus.google.com/+BruceMcpherson "Bruce McPherson - GDE")
 ## Details for Apps Script project ColorArranger
