@@ -3,15 +3,28 @@
 
 <style>
 
+.spinner {  
+    position:absolute;
+    top:50%;
+    left:50%;
+    width:28;
+    height:28;
+    z-index:1000;
+    margin-left: -14px;
+    margin-top: -14px;
+    display:none;
+}
 
 canvas { 
   border: 2px solid #eee; 
+  margin-top:6px;
 }
 
-label {
-  font-weight: bold;
+div.center
+{
+  text-align: center;
+  display: block;
 }
-
 
 .branding-below {
   bottom: 54px;
@@ -38,13 +51,14 @@ label {
 
 .toggle {
     display:inline-block;
-    padding:4px;
+    margin-right:4px;
+
 }
 .toggle.on{
-    box-shadow: 2px 2px 2px 2px #eee;
+
 }
 .toggle.off { 
-    border: 2px solid #eee;
+   
 }
 
 .status {
