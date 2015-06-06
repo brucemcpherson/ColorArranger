@@ -1,5 +1,6 @@
 <?!= HtmlService.createHtmlOutputFromFile('styles.css').getContent(); ?>
-  
+<div id="app">
+
   <div class="block">
   
     <label for="option-column">
@@ -20,6 +21,31 @@
     </select>
   </div>
   
+  <div class = "block">
+    <input type="checkbox" id="option-match-ondrag" checked>
+    <label for="option-match-ondrag">
+    Sort by nearest match while arranging 
+    </label>
+    <br>
+    <div id = "cursor-universe">
+      
+      <div id="picker-eyeDrop" class="toggle off">
+        <img id="picker-eyeDrop-image" 
+          src="https://googledrive.com/host/0B92ExLh4POiZfkZsSDMwaHZUV3hneWdEbVV5aWVqenpWNjYtc29oYUZyYzVKVE50eFBMQm8/dropper.png">      
+      </div>
+      
+      <label for="picker-eyedrop" id="dropper-label">
+        Click on dropper to start color merging
+      </label>
+    
+      <div class="block center">
+        <canvas id="picker-grid" height="140" width="280">
+          Your browser doesnt support the color arranger
+        </canvas> 
+      </div>
+    
+    </div>
+  </div>
   
   <div class="block">
     <label for="option-props">
@@ -29,7 +55,7 @@
     <span style="float:right;">
     
       <label for="option-ascending">
-        Ascending
+        Reverse
       </label>
       <input type="checkbox" id="option-ascending">
     
@@ -39,57 +65,36 @@
     <select class="width-100" id="option-props">
     </select>
 
-    <br><br>
-    <button class="action" id="sort-execute-button">Sort</button>
-    <button id="sort-reset-button">Reset</button>
-    <button id="refresh-button">Refresh</button>
   </div>
-  
+
   <div class="block">
-    <label for="picker-grid">
-      Drag to fine tune
-    </label>
-  
-    <br>
-    <canvas id="picker-grid" height="189" width="284">
-      Your browser doesnt support the color arranger
-    </canvas> 
-  
-    <br>
-    <div id="picker-eyeDrop" class="toggle off">
-      <img id="picker-eyeDrop-image" 
-        src="https://googledrive.com/host/0B92ExLh4POiZfkZsSDMwaHZUV3hneWdEbVV5aWVqenpWNjYtc29oYUZyYzVKVE50eFBMQm8/eyeDropper.png">
-    </div>
-    <label for="picker-eyeDrop">
-      Use dropper to merge colors
-    </label>
-  
-    <span id="picker-status" class="status"></span>
-  
-  </div>
-  
-  <div class="block">
-  
     <input type="checkbox" id="option-contrast" checked>
     <label for="option-contrast">
       Apply contrasting text color
     </label>
-  
-    <br>
-    <input type="checkbox" id="option-close">
-    <label for="option-close">
-      Close sidebar when done
-    </label>
-
   </div>
   
   <div class="block" id="dialog-button-bar">
     <button class="action" id="sheet-apply-button">Apply</button>
-    <button onclick="google.script.host.close()">Cancel</button>
+    <button id="refresh-button">Reset</button>
+    <button onclick="google.script.host.close()">Close</button>
   </div>
+  <div id="picker-status" class="status"></div>
 
+</div>
 
+<div id="spinner" class="spinner">
+    <img src="https://googledrive.com/host/0B92ExLh4POiZfkZsSDMwaHZUV3hneWdEbVV5aWVqenpWNjYtc29oYUZyYzVKVE50eFBMQm8/ajax-loader.gif"/>
+</div>
 
+<div style="display:none">
+      <img 
+        src="https://googledrive.com/host/0B92ExLh4POiZfkZsSDMwaHZUV3hneWdEbVV5aWVqenpWNjYtc29oYUZyYzVKVE50eFBMQm8/dropper.png">
+      <img 
+        src="https://googledrive.com/host/0B92ExLh4POiZfkZsSDMwaHZUV3hneWdEbVV5aWVqenpWNjYtc29oYUZyYzVKVE50eFBMQm8/bucket.png">
+</div>
+
+<?!= HtmlService.createHtmlOutputFromFile('assets.js').getContent(); ?> 
 <?!= HtmlService.createHtmlOutputFromFile('shared.js').getContent();  ?>
 <?!= HtmlService.createHtmlOutputFromFile('ColorMath.js').getContent(); ?> 
 <?!= HtmlService.createHtmlOutputFromFile('execute.js').getContent(); ?> 
