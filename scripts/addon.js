@@ -29,7 +29,7 @@ function showColorArranger() {
   var ui = HtmlService.createTemplateFromFile('index')
       .evaluate()
       .setSandboxMode(HtmlService.SandboxMode.IFRAME)
-      .setTitle('Organize and sort sheet data by color');
+      .setTitle('Sort sheet data by color');
   
   SpreadsheetApp.getUi().showSidebar(ui);
 }
