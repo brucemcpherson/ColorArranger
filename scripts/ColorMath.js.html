@@ -5,7 +5,7 @@
  * @param {string|number} hexColor an rgb color in hex
  * @return {ColorMath} functions for dealing with color
  */
- 
+
 //VB equivalents for commin colors
 var VBCOLORS = {
   vbBlue: 16711680,  
@@ -22,9 +22,42 @@ var ECOMPARECOLOR = {
   whiteY : 100,
   whiteZ  : 108.883,
   eccieDe2000 : 21000,
-  beige: 10009301
+  beige: 10009301,
+  SPACES: {
+    
+    "original":"special",
+    "nearestMatch" : "special",
+    
+    "cieLstar":"cielab",
+    "cieAstar" :"cielab",
+    "cieBstar":"cielab",
+    "hStar":"cielab",
+    
+    "cyan":"cmyk",
+    "magenta":"cmyk",
+    "yellow":"cmyk",
+    "black":"cmyk",
+    
+    "hsHue":"hsl",
+    "hsSaturation":"hsl",
+    "hsLightness":"hsl",
+    "hsValue":"hsv",
+    
+    "red":"rgb",
+    "green":"rgb",   
+    "blue" :"rgb",
+    "htmlHex":"rgb",
+    "rgb":"rgb",
+    
+    "contrastRatio":"w3org",
+    "luminance":"w3org",
+    "textColor":"w3org",
+    
+    "x":"xyz",
+    "y":"xyz",
+    "z":"xyz"
+  }
 };
-
   
 function ColorMath (color) {
 
