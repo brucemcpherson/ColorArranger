@@ -13,17 +13,7 @@ function initializePicker () {
 
 }
 
-
-/**
- * returns a vanilla color prop to use for getting what keys exist
- * @return {object} its properties and labels
- */
-function getPropsTemplate() {
-  var labs = Object.keys(new ColorMath(0).getProperties())
-              .sort(function (a,b) { return a > b ? 1 : (a === b ? 0 : -1);});
-  return {labels:labs, defaultIndex:labs.indexOf(globs.defaults.property)};
-}
-
+  
 /**
  * build column labels
 */
@@ -42,12 +32,28 @@ function buildColumnHeadings () {
  * build a new select structure the props
 */
 function buildPropsSelect () { 
-  buildSelect (
-    getPropsTemplate(globs.divs.optionHeadings.checked),
-    globs.divs.optionProps,
-    false
-  );
+
+  globs.divs.optionProps.innerHTML ="";
+  var spaces = ECOMPARECOLOR.SPACES;
+  var group;
+  
+  Object.keys(spaces).reduce(function(p,c) {
+    
+    // add separators when space changes
+    if (!p || spaces[c] !== p) {
+      group = elAdd(globs.divs.optionProps, "optgroup");
+      group.label = spaces[c];
+    }
+    var op = elAdd (group, "option");
+    op.value = c;
+    op.text = c;
+    op.selected =  (c === globs.defaults.property);
+    return spaces[c];
+    
+  },"");
+
 }
+
 /**
  * build a new select structure 
  * @param {object[]} items the items to build the select with
@@ -80,7 +86,7 @@ function reportStatus(message) {
  * this will be called on a change of column or heading status
  */
 function refreshForm () {
-  
+
   // adjust the result based on whether there are headings
   dealWithData();
 
@@ -99,23 +105,24 @@ function refreshForm () {
  */
 function getColorsGoogle (useActive, funSuccess, funFailure) {
 
+  spinCursor();
+  
   try {
     // get the known colors
-    google.script.run
-    .withSuccessHandler( function (data) { 
-
-        funSuccess (data);
+    google.script.run.withSuccessHandler( function (data) { 
         
+        resetCursor();
+            
         if (data.error) {
           funFailure(data.error);
         }
         else {
           funSuccess(data);
         }
-        
+
     })
     .withFailureHandler( function (e) {
-    
+      resetCursor();
       funFailure (e);
       
     }) // if this is first time we've tried, get the acive column as the default
@@ -124,74 +131,131 @@ function getColorsGoogle (useActive, funSuccess, funFailure) {
   catch (err) {
     reportStatus (err);
   }
+
 } 
 
 /**
  * get current colors - get all known colors in the current sheet, along with the headings
  */
 function getColors (useActive) {
+
   
-  // go off and get new
+  // go off and get colors from sheet
   getColorsGoogle ( useActive, 
     function (data) {
       // store this for later
       globs.data.result = data;
+
       // redo the form
       refreshForm();
     }, 
     function (error) {
-      reportStatus (e)
+      reportStatus (e);
     }
   );
-
+  
 } 
+function resetCursor() {
+  el ('spinner').style.display = "none";
+  
+}
+function spinCursor() {
+  el ('spinner').style.display = "block";
+}
+
+/**
+ * called when we've successfully applied the changes
+ */
+function appliedSuccess (result) {
+
+  // we'll be spinning so turn it off
+  resetCursor();
+  
+  // but not really a success
+  if (result.error) {
+    reportStatus(result.error);
+  }
+  else {
+    // reset the colors using the newly applied changes
+    getColors (false);
+  }
+  
+  // open for business again
+  globs.divs.optionApply.disabled = false;
+
+}
+
+/**
+ * called when we've failed to apply the changes
+ */
+function appliedFail (result) {
+
+  // we'll be spinning so turn it off
+  resetCursor();
+ 
+  reportStatus(result.message);
+  
+  // open for business again
+  globs.divs.optionApply.disabled = false;
+  
+}
+
+/**
+ * called when safe to apply data to sheet
+ * @prepared {object} prepared the prepared data
+ */
+function applyExecute (prepared) {
+      
+  google.script.run
+    .withSuccessHandler (appliedSuccess)
+    .withFailureHandler (appliedFail)
+    .applyColors ( prepared);
+}
+
+/**
+ * see if the sheet is still in same condition as when sample was taken
+ */
+function applyCheck() {
+
+  
+  // get active sheet data
+  google.script.run.withSuccessHandler( function (result) {
+    var ok = (result.dataRange === globs.data.result.dataRange && result.id === globs.data.result.id);
+    if (!ok) {
+      reportStatus ("Current sheet has changed since loading colors - cannot apply sort") ;
+      globs.divs.optionApply.disabled = false;
+      resetCursor();
+    }
+    else {
+      //it worked .. now we can actually apply it 
+      applyExecute(prepareResult());
+    }
+  })
+  .withFailureHandler( function (err) {
+    reportStatus(err.message);
+    resetCursor();
+  })
+  .getSheetData (-1);
+
+}
+
 /**
  * apply execute
  */
 function applyToSheet () {
+
   
   if (globs.arranger) globs.arranger.reset();
-  
-  // deal with the data from the arranger
-  var prepared = prepareResult();
+ 
+  globs.divs.optionApply.disabled = true;
 
-  
-  // go off and get current
-  getColorsGoogle ( true,
-    
-    function (data) {
-      // need to make sure it will fit
-      var ok = (data.dataRange === globs.data.result.dataRange && data.id === globs.data.result.id);
-      if (!ok) {
-        ok = window.prompt ("Current sheet has changed since loading colors. Apply anyway ?") ;
-      }
-      
-      if (ok) {
-        google.script.run
-          .withSuccessHandler ( function (d) {
-            if (d.error) {
-              
-              reportStatus(d.error);
-            }
-            else {
-              // we need to reset everything to the current state of the sheet
-              if (globs.divs.optionClose.checked) google.script.host.close();
-              getColors (false);
-            }
-          })
-          .withFailureHandler ( function (e) {
-         
-            reportStatus (e.message);
-          })
-          .applyColors ( prepared);
-      }
-      
-    }, 
-    function (error) {
 
-      reportStatus (error.message);
-    }
-  );
+  // look busy
+  spinCursor();
+  
+  // check its ok and apply
+  applyCheck();
+  
 
 } 
 
