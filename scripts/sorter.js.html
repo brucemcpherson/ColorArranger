@@ -5,15 +5,33 @@
  * @param {string{ property the ColorMath property to sort on
  * @param {Shapes[]} shapes the shape objects
  * @param {ascending} boolean whether it's ascending
+ * @param {number} startAt an index to start at .. only applies to nearest match for now
  * @return {Shapes[]} the sorted shape objects
  */
- function sortShapes (property ,shapes , ascending) {
+ function sortShapes (property ,shapes , ascending,startAt) {
    
     if (!shapes.length) return shapes;
 
    // special kind of sort - nearest match
     if (property === "nearestMatch") {
-      return nearestMatch (shapes, ascending);
+      
+      // do a regular nearest match sort
+      nearestMatch (shapes,startAt);
+      
+      // reverse it if necessary
+      if (ascending) {
+        shapes.sort (function (a,b) {
+          return  (b.latest.index - a.latest.index) ;
+        })
+      }
+   }
+   
+   // original order
+   else if (property === "original") {
+     shapes.sort (function (a,b){
+        return ascending ? (b.original.index - a.original.index) : (a.original.index - b.original.index) ;
+     });
+     
    }
    
    // regular sort by some property
@@ -24,14 +42,14 @@
        return (ascending ? 1 : -1 ) * 
         sortHelper ( [property, "htmlHex"] , a , b , function (x) { return x.latest.cm.getProperties(); });
     })
-    .forEach(function(d,i){
-      // sort out the index
-      d.latest.index = i;
-    });
-    
-    return shapes;
    }
    
+   // sort out the index     
+   shapes.forEach(function(d,i) {
+     d.latest.index = i;
+   });
+   
+   return shapes;
  }
  
 
@@ -58,19 +76,20 @@
 /**
 * do a nearest match sort - this means keep on finding the color with the least difference till all done
 * @param {object[]} shapes the shapes
-* @param {boolean} ascending whether it's ascending
 * @return {object[]) the sorted shapes[]
 */
 
-function nearestMatch (shapes, ascending) {
+function nearestMatch (shapes,startAt) {
+  
+  startAt =  startAt || 0; 
   
   //  set all indices to be unresolved
-  shapes.forEach (function (d){
-    d.latest.index = -1;
+  shapes.forEach (function (d,i){
+     d.latest.index = i <= startAt ? d.latest.index : -1 ;
   });
   
   // next always points to the one we've just decided is the next one to compare against
-  for (var next = shapes[ascending ? shapes.length-1 : 0], index=0, match ; next; index++, next=match) {
+  for (var next = shapes[startAt], index=startAt, match ; next; index++, next=match) {
 
     // its in its final poistion
     next.latest.index = index ; 
