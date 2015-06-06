@@ -9,15 +9,14 @@
    // all global settings
     globs = {
       defaults:{ 
-        property:'nearestMatch'
+        property:'original'
       },
+      language:'en',
       divs:{
         canvas:el('picker-grid'),
         status:el('picker-status'),
         eyeDrop:el('picker-eyeDrop'),
         eyeDropImage:el('picker-eyeDrop-image'),
-        reset:el('sort-reset-button'),
-        sortExecute:el('sort-execute-button'),
         optionProps:el('option-props'),
         optionAscending:el('option-ascending'),
         optionHeadings:el('option-headings'),
@@ -25,32 +24,48 @@
         optionContrast:el('option-contrast'),
         optionApply:el('sheet-apply-button'),
         optionRefresh:el('refresh-button'),
-        optionClose:el('option-close')
+        optionMatchOndrag:el('option-match-ondrag'),
+        dropperLabel:el('dropper-label'),
+        cursorUniverse:el('cursor-universe')
       },
       data: {
         colors: [],
         result: {},
         labels: []
       },
-      arranger: null
+      arranger: null,
+      cursors: {
+        normal:'default',
+        drag:'move',
+        eyeDropGrab:'url(' + Assets.images.dropper + '),-webkit-grab',
+        eyeDrop:'url(' + Assets.images.bucket + '),cell',
+        out:'not-allowed',
+        spinner:'wait',
+        grab:'pointer'
+      },
+      assets:Assets
     };
 
+    // initial populate, will ask the sheet for which column to use
+    getColors(true);
+    
+    
     // this provokes a reget of the data and a replot of the colors
     globs.divs.optionColumn.addEventListener("change" , function () {
         getColors(false);
       } ,false);
     
     // this provokes a reorganization of the colors and headings
-    globs.divs.optionHeadings.addEventListener("change" , refreshForm ,false);
+    globs.divs.optionHeadings.addEventListener("change" , function () {
+      refreshForm();
+    } ,false);
     
     // this provokes a reget of the data
     globs.divs.optionRefresh.addEventListener("click" , function () {
         getColors(false);
       } ,false);
     
-    // initial populate, will ask the sheet for which column to use
-    getColors(true);
-    
+
     // create the supported property drop down
     buildPropsSelect();    
     
