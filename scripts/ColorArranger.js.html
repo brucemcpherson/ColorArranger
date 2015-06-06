@@ -20,11 +20,14 @@ function ColorArranger(options) {
           color:'#eee'
         },
         max: {
-          rows:8,
-          columns:12
+          rows:5,
+          columns:10
         },
       },
       divs:{
+      },
+      language:'en',
+      assets: {
       }
     });
    
@@ -56,13 +59,7 @@ function ColorArranger(options) {
         x:0,
         y:0
       },
-      cursor: {
-        normal:'default',
-        drag:'move',
-        eyeDropGrab:'-webkit-grab',
-        eyeDrop:'cell',
-        out:'not-allowed'
-      },
+      cursor: options.cursors,
       classes: {
         toggle: {
           on:"toggle on",
@@ -92,7 +89,7 @@ function ColorArranger(options) {
     
     // browser is ok for all this stuff so let's go
     control.ctx = settings.divs.canvas.getContext("2d");    
-    control.bound =  settings.divs.canvas.getBoundingClientRect();
+    control.bound =  function () { return settings.divs.canvas.getBoundingClientRect(); };
     
     // setup event handlers
     setEventHandlers();
@@ -119,8 +116,11 @@ function ColorArranger(options) {
       data.selectedColors = data.colors;
       data.shapes = makeShapes(data.selectedColors);
       
+      // get rid of any hangovers
+      self.reset();
+      
       // render them
-      renderShapes ();
+      self.doASort();
     
     }
     /** 
@@ -130,6 +130,30 @@ function ColorArranger(options) {
     self.getColors = function () {
       return data;
     };
+    
+    /**
+     * set up the cursor 
+     */
+    function setCursor () {
+    
+      // this is where we are going to modify the cursor
+      var universe = settings.divs.cursorUniverse;
+      
+      if(control.dragging) {
+        universe.style.cursor = mouseOutsideCanvas()  ?  control.cursor.out : control.cursor.drag;
+      }
+      
+      else if (control.eyeDropping.active) {
+        universe.style.cursor =  mouseOutsideElem (universe) ? 
+          control.cursor.normal : (control.eyeDropping.dropper ? control.cursor.eyeDrop : control.cursor.eyeDropGrab);
+      }
+      
+      else {
+        universe.style.cursor = findShapeFromXY () ? control.cursor.grab :control.cursor.normal ;
+      }
+      
+    }
+
     
     function setEventHandlers() {
       
@@ -142,20 +166,27 @@ function ColorArranger(options) {
         else {
           control.eyeDropping.active = true;
           settings.divs.eyeDrop.className = control.classes.toggle.on;
+          settings.divs.eyeDropImage.src = settings.assets.images.dropper;
+          settings.divs.dropperLabel.innerHTML = settings.assets.content[settings.divs.dropperLabel.id].selecting[settings.language];
+          setCursor();
         }
           
       });
       
       // do a sort
-      settings.divs.sortExecute.addEventListener ("click", function () {
-        sortShapes (settings.divs.optionProps.value, data.shapes , settings.divs.optionAscending.checked);
-        renderShapes();  
+      settings.divs.optionProps.addEventListener ("change", function () {
+        self.doASort();
       });
       
-      settings.divs.reset.addEventListener ("click", function () {
-        self.reset();
-        restart();
+      // do a sort
+      settings.divs.optionAscending.addEventListener ("change", function () {
+        self.doASort();
       });
+      
+      self.doASort = function () {
+        sortShapes (settings.divs.optionProps.value, data.shapes , settings.divs.optionAscending.checked);
+        renderShapes();  
+      };
       
       /**
       * abandon all dragging etc.
@@ -170,7 +201,10 @@ function ColorArranger(options) {
         control.eyeDropping.active = false;
         control.eyeDropping.dropper = null;
         settings.divs.eyeDrop.className = control.classes.toggle.off;
+        settings.divs.eyeDropImage.src = settings.assets.images.dropper;
         settings.divs.eyeDrop.style.backgroundColor = control.colors.eyeDrop;
+        settings.divs.dropperLabel.innerHTML = settings.assets.content[settings.divs.dropperLabel.id].normal[settings.language];
+        setCursor();
 
       }
       // -------- muose events ------
@@ -180,27 +214,25 @@ function ColorArranger(options) {
         // so we can always know the current mouse position for anumation
         control.mousePosition.x = e.clientX;
         control.mousePosition.y = e.clientY;
-        
-        // centralize all cursor changing activities here
-        if(control.dragging) {
-          document.body.style.cursor = mouseOutsideCanvas()  ?  control.cursor.out : control.cursor.normal;
-          settings.divs.canvas.style.cursor = control.cursor.drag;
-        }
-        else if (control.eyeDropping.active) { 
-          document.body.style.cursor = mouseOutsideCanvas()  ?  control.cursor.normal : control.cursor.normal;
-          settings.divs.canvas.style.cursor = control.eyeDropping.dropper ? control.cursor.eyeDrop : control.cursor.eyeDropGrab;
-        }
-        else {
-          document.body.style.cursor = settings.divs.canvas.style.cursor = control.cursor.normal;
-        }
+        setCursor();
 
         
       },false);
       
+      // finish eyedropping
+      window.addEventListener( 'keydown', function(e) {
+        if(control.eyeDropping.active) { 
+          e = e || window.event;
+          if (e.keyCode == 27) {
+            eyeDropReset();
+          }
+        }
+      },false);
+  
+      
       // finished dragging pr eyedropping event
       window.addEventListener("mouseup", function(e) {
-       
-         
+
         if(mouseOutsideCanvas()) { 
           // the idea here is if the mouse is released outside the canvas, its an abandon operation
           if ( control.dragging ) {
@@ -266,7 +298,10 @@ function ColorArranger(options) {
         control.eyeDropping.dropper = dropper;
         settings.divs.eyeDrop.style.backgroundColor = dropper.latest.color;
       }
-      
+      // change to a bucket
+      settings.divs.eyeDropImage.src = settings.assets.images.bucket;
+      settings.divs.dropperLabel.innerHTML = settings.assets.content[settings.divs.dropperLabel.id].filling[settings.language];
+      setCursor();
       return dropper;
     }
      /**
@@ -291,6 +326,12 @@ function ColorArranger(options) {
         // re-render the shape
         shapeRect (dropee);
         
+        // clear the canvas and re-render the shapes if a sort is needed
+        if (settings.divs.optionMatchOndrag.checked ) {
+          sortShapes ("nearestMatch", data.shapes , false);
+          renderShapes ();
+        }
+
       }
     }
     
@@ -352,6 +393,8 @@ function ColorArranger(options) {
       if (control.dragging) {
         
         var dragee = control.dragging.dragee;
+        var moved = dragTo && dragee.latest.index !== dragTo.latest.index;
+        
         // first get rid of the shape being moved
         data.shapes.splice (dragee.latest.index,1);
         
@@ -364,12 +407,16 @@ function ColorArranger(options) {
         });
         // set the color back to normal
         dragee.active.color = dragee.latest.color;
+        var drageeIndex = dragee.latest.index;
         
         dragReset();
         
         // clear the canvas and re-render the shapes
+        if (settings.divs.optionMatchOndrag.checked && moved) {
+          sortShapes ("nearestMatch", data.shapes , false , drageeIndex);
+        }
+
         renderShapes ();
-        
 
       }
     }
@@ -377,6 +424,7 @@ function ColorArranger(options) {
     function dragReset () {
         // dragging is over
         control.dragging= null;
+        setCursor();
     }
     // ------------ called by request animation to replot the canvas -----
     function dragTranslate() {
@@ -440,9 +488,10 @@ function ColorArranger(options) {
      * @return {object} x,y coord translation
      */
     function mouseToCanvasPos () {
+      var bound = control.bound();
       return { 
-        x: control.mousePosition.x - control.bound.left,
-        y: control.mousePosition.y - control.bound.top
+        x: control.mousePosition.x - bound.left,
+        y: control.mousePosition.y - bound.top
       };
     }
     /**
@@ -450,29 +499,44 @@ function ColorArranger(options) {
      * @return {boolean} whether mouse is over convas
      */
     function mouseOutsideCanvas () {
-      
-      var p = control.mousePosition;
-      // if the current position is to the left of or above then we're outside
-      return (p.x < control.bound.left || 
-        p.y < control.bound.top ||
-        p.x > control.bound.right ||
-        p.y > control.bound.bottom
-      );
-
+      return mouseOutside (control.bound());
+    }
+    /**
+     * @param {Event} e object
+     * @return {boolean} whether mouse is over a div
+     */
+    function mouseOutsideElem (elem) {
+      return mouseOutside ( {
+        left:elem.offsetLeft,
+        top:elem.offsetTop,
+        bottom:elem.offsetTop + elem.offsetHeight,
+        right:elem.offsetLeft + elem.offsetWidth
+      });
     }
     
+    function mouseOutside (bound) {
+      var p = control.mousePosition;
+     // if the current position is to the left of or above then we're outside
+      return (p.x < bound.left || 
+        p.y < bound.top ||
+        p.x > bound.right ||
+        p.y > bound.bottom
+      );
+    }
     /**
     * render the shapes 
     */
     function renderShapes() {
 
       settings.divs.status.innerHTML = "";
-      control.ctx.clearRect(0, 0, control.bound.width, control.bound.height);
+      var bound = control.bound();
+      control.ctx.clearRect(0, 0, bound.width, bound.height);
+
       
       data.shapes.forEach ( function(d,i) {
         d.x = (i % settings.grid.max.columns) * d.width;
         d.y = Math.floor(i/settings.grid.max.columns) * d.height;
-        if (d.x < control.bound.width && d.y < control.bound.height) {        
+        if (d.x < bound.width && d.y < bound.height) {        
           shapeRect (d);
         }
         else {
@@ -489,9 +553,9 @@ function ColorArranger(options) {
     * @return {object[]} array of shape objects
     */
     function makeShapes () {
-
-      var dWidth = control.bound.width / settings.grid.max.columns;
-      var dHeight = control.bound.height / settings.grid.max.rows;
+      var bound = control.bound();
+      var dWidth = bound.width / settings.grid.max.columns;
+      var dHeight = bound.height / settings.grid.max.rows;
     
     // attach colormath to every shape
 
