@@ -41,6 +41,7 @@ function getSheetData (target) {
   return result;
 
 }
+
 /**
  * apply the changed colors
  * @param {object} changedColors from the addon with info on sorting
@@ -53,19 +54,27 @@ function applyColors (changedColors) {
   
     // find the sheet(might not be the current)
     var sh = SpreadsheetApp.getActiveSheet();
+    
+    // get the dataRange
     var dataRange = sh.getDataRange();
    
-    // create a ranking values for each data row
+    // if there's a heading, ignore it
     var hr = changedColors.headings ? 1 : 0;
     
     // this is the columnRange we'll be dealing with
     var columnRange = sh.getRange(1 + hr , changedColors.index +1 ,dataRange.getNumRows() - hr , 1);
     
-    // get the current values
+    // this is where we're going to write the sort data
+    var extraRange = columnRange.offset(0, dataRange.getNumColumns() - columnRange.getColumn() +1,columnRange.getNumRows(),1);
+    
+    // get the current color values
     var currentColors = columnRange.getBackgrounds();
     
-    // and text colors
-    var currentFontColors = columnRange.getFontColors();
+
+    // and font colors
+    if(changedColors.contrast) {
+      var currentFontColors = columnRange.getFontColors();
+    }
     
     // make a convenient lookup by original color
     var lookup = changedColors.colors.reduce (function (p,c) {
@@ -73,47 +82,54 @@ function applyColors (changedColors) {
       return p;
     },{});
     
-    // make the new ranks
-    var ranks = currentColors.map(function(d) {
-      if (lookup[d[0]]) {
-        return [lookup[d[0]].index];
+    // we won't bother rewriting the colors if none have changed
+    var anyDroppers = changedColors.colors.some ( function (d) {
+      return d.original.color !== d.latest.color;
+    });
+    
+    // now we can use this lookup to find each rows sort rank and change any colors if necessary
+    var ranks = currentColors.map( function (row,i) {
+      // there's only one column
+      var d = row[0];
+      
+      // see if we know what to change it to
+      if (lookup[d]) {
+        currentColors[i][0] = lookup[d].color;
+        if(changedColors.contrast) {
+          currentFontColors[i][0] = lookup[d].textColor;
+        }
+        return [lookup[d].index];
       }
       else {
-        // colors that were added since sample was taken - sort to top
-        result.error = "color " + d[0] + " was not sorted";
+        // must have added this since the sample was taken
+        result.error = "color " + d + " not sorted - was not in sample";
         return [-1];
       }
     });
-    
-    // apply the background colors
-    currentColors.forEach (function(d,i) {
-      if(lookup[d[0]]) {
-        currentFontColors[i][0] = lookup[d[0]].textColor;
-        d[0] = lookup[d[0]].color;
-      }
-    });
-    
-    // set the background colors
-    columnRange.setBackgroundColors (currentColors);
-    
-    // if asked, change the font to  contrasting one
-    if (changedColors.contrast) {
-      columnRange.setFontColors (currentFontColors);
+ 
+    // need to write the font & colors if changed and needed
+    if(anyDroppers) {
+      columnRange.setBackgrounds(currentColors);
     }
-   
     
-    // write out the ranks in a new column and sort
-    var extraRange = columnRange.offset(0, dataRange.getNumColumns() - columnRange.getColumn() +1);
+    // maybe need to cheange font contrast
+    if(changedColors.contrast) {
+      columnRange.setFontColors(currentFontColors);
+    }
+    
+    // write out the ranks in a new column and sort after hiding it
+    //sh.hideColumn(extraRange);
     extraRange.setValues(ranks);
-    
-    
+
     // sort on it ascending
-    var sortRange = sh.getRange(extraRange.getRow(), 1, extraRange.getNumRows(), dataRange.getNumColumns() + 1 );
-    
-    sortRange.sort({column: extraRange.getColumn(), ascending: true});
+    var sortRange = sh.getRange(columnRange.getRow(), 1, columnRange.getNumRows(), sh.getDataRange().getNumColumns() );
+    sortRange.sort(extraRange.getColumn());
       
     // get rid of it
+    //sh.unhideColumn(extraRange);
     sh.deleteColumn(extraRange.getColumn());
+ 
+
   }
   catch(e) {
     result.error = e;
