@@ -4,3 +4,5 @@ for more information see the [desktop liberation site](http://ramblings.mcpher.c
 you can see [library and dependency information here](dependencies.md)
 
 Details of this Add-on can be found [here] (http://ramblings.mcpher.com/Home/excelquirks/colorfiesta/colorarranger)
+
+You can do what you will with this source code - but this Sheets Add-on already exists, so don't just create another the same.
