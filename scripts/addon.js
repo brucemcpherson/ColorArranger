@@ -7,7 +7,7 @@
 function onOpen(e) {
   SpreadsheetApp.getUi()
       .createAddonMenu()
-      .addItem('Color Arranger', 'showColorArranger')
+      .addItem('Sort data by color', 'showColorArranger')
       .addToUi();
 }
 
@@ -29,7 +29,7 @@ function showColorArranger() {
   var ui = HtmlService.createTemplateFromFile('index')
       .evaluate()
       .setSandboxMode(HtmlService.SandboxMode.IFRAME)
-      .setTitle('Sort sheet data by color');
+      .setTitle('Sort data by color');
   
   SpreadsheetApp.getUi().showSidebar(ui);
 }
