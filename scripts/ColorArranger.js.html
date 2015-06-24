@@ -331,7 +331,10 @@ function ColorArranger(options) {
           sortShapes ("nearestMatch", data.shapes , false);
           renderShapes ();
         }
-
+        
+        // since we are dropping we need to change the sort order to custom
+        settings.divs.optionProps.value = "custom";
+        
       }
     }
     
@@ -414,6 +417,9 @@ function ColorArranger(options) {
         // clear the canvas and re-render the shapes
         if (settings.divs.optionMatchOndrag.checked && moved) {
           sortShapes ("nearestMatch", data.shapes , false , drageeIndex);
+          
+          // now we need to set this as a custom sort since we've dragged something
+          settings.divs.optionProps.value = "custom";
         }
 
         renderShapes ();
