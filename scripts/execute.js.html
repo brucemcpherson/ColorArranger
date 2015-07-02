@@ -62,20 +62,20 @@ function buildPropsSelect () {
  */
 function buildSelect (items,elem,valuesIsIndex) {
 
-  reportStatus ("...talking to sheet");
   // clear whatever is there
   elem.innerHTML = "";
       
   // add the options
   items.labels.forEach (function (d,i) {
+    var lab = d ? d : '(blank)'
     var op = elAdd (elem,"option");
-    op.value = valuesIsIndex ? i : d;
-    op.text = d;
+    op.value = valuesIsIndex ? i : lab;
+    op.text = lab;
     op.selected =  (i === items.defaultIndex);
   });
       
   elem.value =  valuesIsIndex ? items.defaultIndex : items.labels[items.defaultIndex];
-  reportStatus("...ready");
+ 
 
 } 
 function reportStatus(message) {
@@ -106,7 +106,7 @@ function refreshForm () {
 function getColorsGoogle (useActive, funSuccess, funFailure) {
 
   spinCursor();
-  
+
   try {
     // get the known colors
     google.script.run.withSuccessHandler( function (data) { 
@@ -235,10 +235,38 @@ function applyCheck() {
     reportStatus(err.message);
     resetCursor();
   })
-  .getSheetData (-1);
+  .getSheetCheck ();
 
 }
+/**
+ * see if we're still on the same sheet, and if not then it's just like a fresh start
+ */
+function resetForm () {
+  
+  // get active sheet data
+  google.script.run.withSuccessHandler( function (result) {
+    var theSame = (result.dataRange === globs.data.result.dataRange && result.id === globs.data.result.id);
+    
+    if (theSame) {
+      getColors(false);
+    }
+    else {
+      // it's changed so we need to clear out everything
+        globs.data.colors = []; 
+        globs.data.result = {};
+        globs.data.labels = [];
+        globs.divs.optionHeadings.checked = true
+        getColors(true);
+    }
+    
+  })
+  .withFailureHandler( function (err) {
+    reportStatus(err.message);
+    resetCursor();
+  })
+  .getSheetCheck ();
 
+}
 /**
  * apply execute
  */
@@ -265,16 +293,26 @@ function applyToSheet () {
 function dealWithData () {
 
   // redo the colors and labels based on whether there are headings
-    
     var headingsExist = globs.divs.optionHeadings.checked;
     
+  
+    // uncheck headings exist if they are all blank
+    if (headingsExist && !globs.data.result.labels.some (function(d) { return d;})) {
+    
+      // but we only allow changing on first time in
+      if (!globs.data.labels.length) {
+        headingsExist = globs.divs.optionHeadings.checked = false;
+        globs.data.labels = globs.data.result.labels;
+      }
+    }
+
     // either use the given labels, or make a,b,c type ones
     globs.data.labels = headingsExist ? 
         globs.data.result.labels : 
         globs.data.labels.map(function (d,i) {
           return columnLabelMaker(i+1);
         });
-        
+   
    // if there were no headings, then we have to incorporate the heading color as a data row
    globs.data.colors = globs.data.result.colors.slice();
    if (!headingsExist) {
