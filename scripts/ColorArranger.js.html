@@ -418,9 +418,12 @@ function ColorArranger(options) {
         if (settings.divs.optionMatchOndrag.checked && moved) {
           sortShapes ("nearestMatch", data.shapes , false , drageeIndex);
           
-          // now we need to set this as a custom sort since we've dragged something
-          settings.divs.optionProps.value = "custom";
         }
+        
+        // now we need to set this as a custom sort since we've dragged something
+        if(moved) {
+          settings.divs.optionProps.value = "custom";
+        }   
 
         renderShapes ();
 
