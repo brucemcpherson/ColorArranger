@@ -1,5 +1,5 @@
 # Google Apps Script Project: ColorArranger
-This repo (ColorArranger) was automatically updated on 15 September 2015 11:50:03 BST by GasGit
+This repo (ColorArranger) was automatically updated on 28 September 2015 17:44:54 BST by GasGit
 
 For more information see the [desktop liberation site](http://ramblings.mcpher.com/Home/excelquirks/drivesdk/gettinggithubready "desktop liberation") or [contact me on G+](https://plus.google.com/+BruceMcpherson "Bruce McPherson - GDE")
 ## Details for Apps Script project ColorArranger
@@ -26,8 +26,6 @@ no libraries discovered
 ### All dependencies and sub dependencies
 no libraries discovered
 ### Enabled Google Services
-*library*|*identifier*|*version*
---- | --- | --- 
-Drive API| Drive|v2
+no libraries discovered
 ###Need more detail ?
 You can see [full project info as json here](info.json)
