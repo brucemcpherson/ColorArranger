@@ -1,5 +1,5 @@
 # Google Apps Script Project: ColorArranger
-This repo (ColorArranger) was automatically updated on 20 November 2017 12:51:02 GMT by GasGit
+This repo (ColorArranger) was automatically updated on 14 January 2018 11:03:37 GMT by GasGit
 
 For more information see the [desktop liberation site](http://ramblings.mcpher.com/Home/excelquirks/drivesdk/gettinggithubready "desktop liberation") or [contact me on G+](https://plus.google.com/+BruceMcpherson "Bruce McPherson - GDE")
 ## Details for Apps Script project ColorArranger
@@ -21,6 +21,7 @@ sorter.js| html
 ColorMath.js| html
 shared.js| html
 assets.js| html
+appsscript| json
 ### Directly referenced libraries
 no libraries discovered
 ### All dependencies and sub dependencies
