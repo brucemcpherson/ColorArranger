@@ -1,0 +1,125 @@
+<script>
+'use strict';
+/** 
+ * does sorting given a property to sort on and an array of shapes
+ * @param {string{ property the ColorMath property to sort on
+ * @param {Shapes[]} shapes the shape objects
+ * @param {ascending} boolean whether it's ascending
+ * @param {number} startAt an index to start at .. only applies to nearest match for now
+ * @return {Shapes[]} the sorted shape objects
+ */
+ function sortShapes (property ,shapes , ascending,startAt) {
+   
+    if (!shapes.length) return shapes;
+
+   // special kind of sort - nearest match
+    if (property === "nearestMatch") {
+      
+      // do a regular nearest match sort
+      nearestMatch (shapes,startAt);
+      
+      // reverse it if necessary
+      if (ascending) {
+        shapes.sort (function (a,b) {
+          return  (b.latest.index - a.latest.index) ;
+        })
+      }
+   }
+   
+   // original order
+   else if (property === "original") {
+     shapes.sort (function (a,b){
+        return ascending ? (b.original.index - a.original.index) : (a.original.index - b.original.index) ;
+     });
+     
+   }
+   
+   else if (property === "custom") {
+     // nothing to do
+     
+   }
+   // regular sort by some property
+   else {
+    
+    shapes.sort (function (a,b) {
+       // add the hex code to sort where properties are eual value
+       return (ascending ? 1 : -1 ) * 
+        sortHelper ( [property, "htmlHex"] , a , b , function (x) { return x.latest.cm.getProperties(); });
+    })
+   }
+   
+   // sort out the index     
+   shapes.forEach(function(d,i) {
+     d.latest.index = i;
+   });
+   
+   return shapes;
+ }
+ 
+
+ /**
+  * a sort helper where there are multiple properties to compare
+  * @param {string[]} properties properrty names
+  * @param {*} a object a
+  * @param {*} b object b
+  * @param {function} fun how to get the property root
+  * @return {number} -ve a>b, 0 a=b, 1 a<b
+  */
+ function sortHelper (properties , a, b , fun) {
+   
+   for (var i = 0 ; i < properties.length ; i++) {
+     var va = fun(a)[properties[i]];
+     var vb = fun(b)[properties[i]];
+     if (va > vb) return 1;
+     if (va < vb) return -1;
+     if (i === properties.length-1) return 0;
+   }
+   throw 'no properties supplied';
+ }  
+    
+/**
+* do a nearest match sort - this means keep on finding the color with the least difference till all done
+* @param {object[]} shapes the shapes
+* @return {object[]) the sorted shapes[]
+*/
+
+function nearestMatch (shapes,startAt) {
+  
+  startAt =  startAt || 0; 
+  
+  //  set all indices to be unresolved
+  shapes.forEach (function (d,i){
+     d.latest.index = i <= startAt ? d.latest.index : -1 ;
+  });
+  
+  // next always points to the one we've just decided is the next one to compare against
+  for (var next = shapes[startAt], index=startAt, match ; next; index++, next=match) {
+
+    // its in its final poistion
+    next.latest.index = index ; 
+    match = undefined;
+    
+    // compare against all the others selecting the closest to next
+    for (var i=0, shortest = -1; i < shapes.length && shortest !== 0 ;i++) {
+      var d = shapes[i];
+      if (d.latest.index === -1) {
+        var distance = next.latest.cm.compareColorProps (d.latest.cm.getProperties());
+        if (shortest === -1 || distance < shortest) {
+          shortest = distance;
+          match = d;
+        }
+      }
+    }
+
+  }
+      
+  // double check everything got done
+  if (shapes.some(function(d){ return d.latest.index === -1;})) throw 'invalid nearest sort';
+  
+  // now sort by rank
+  return shapes.sort (function(a,b) {
+      return a.latest.index - b.latest.index;
+  });
+}
+
+</script>
