@@ -1,0 +1,365 @@
+<script>
+'use strict';
+
+function initializePicker () {
+
+  // make bare bones color list for the picker
+  var colors = globs.data.colors.map(function(d) {
+    return d.color;
+  });
+  // create a color arranger canvas
+  globs.arranger = globs.arranger || new ColorArranger(globs);
+  globs.arranger.start (colors);
+
+}
+
+  
+/**
+ * build column labels
+*/
+function buildColumnHeadings () { 
+  
+  buildSelect ( {
+      labels:globs.data.labels, 
+      defaultIndex: globs.data.result.defaultIndex
+    },
+    globs.divs.optionColumn,
+    true
+  );
+}
+
+/**
+ * build a new select structure the props
+*/
+function buildPropsSelect () { 
+
+  globs.divs.optionProps.innerHTML ="";
+  var spaces = ECOMPARECOLOR.SPACES;
+  var group;
+  
+  Object.keys(spaces).reduce(function(p,c) {
+    
+    // add separators when space changes
+    if (!p || spaces[c] !== p) {
+      group = elAdd(globs.divs.optionProps, "optgroup");
+      group.label = spaces[c];
+    }
+    var op = elAdd (group, "option");
+    op.value = c;
+    op.text = c;
+    op.selected =  (c === globs.defaults.property);
+    return spaces[c];
+    
+  },"");
+
+}
+
+/**
+ * build a new select structure 
+ * @param {object[]} items the items to build the select with
+ * @param {Element} elem of the parent select elem
+ * @param {boolean} valueIsIndex whether to use the index or the value for default
+ */
+function buildSelect (items,elem,valuesIsIndex) {
+
+  // clear whatever is there
+  elem.innerHTML = "";
+      
+  // add the options
+  items.labels.forEach (function (d,i) {
+    var lab = d ? d : '(blank)'
+    var op = elAdd (elem,"option");
+    op.value = valuesIsIndex ? i : lab;
+    op.text = lab;
+    op.selected =  (i === items.defaultIndex);
+  });
+      
+  elem.value =  valuesIsIndex ? items.defaultIndex : items.labels[items.defaultIndex];
+ 
+
+} 
+function reportStatus(message) {
+   globs.divs.status.innerHTML = message;
+}
+
+/**
+ * this will be called on a change of column or heading status
+ */
+function refreshForm () {
+
+  // adjust the result based on whether there are headings
+  dealWithData();
+
+  // build a new column list
+  buildColumnHeadings();
+  
+  // kick off a new picker session
+  initializePicker();
+  
+}
+/**
+ * get current colors - get all known colors in the current sheet, along with the headings
+ * @param {boolean} useActive whether to use active cell as the target column
+ * @param {function} funSuccess what to do with a success
+ * @param {function} funFailure what to do with a failure
+ */
+function getColorsGoogle (useActive, funSuccess, funFailure) {
+
+  spinCursor();
+
+  try {
+    // get the known colors
+    google.script.run.withSuccessHandler( function (data) { 
+        
+        resetCursor();
+            
+        if (data.error) {
+          funFailure(data.error);
+        }
+        else {
+          funSuccess(data);
+        }
+
+    })
+    .withFailureHandler( function (e) {
+      resetCursor();
+      funFailure (e);
+      
+    }) // if this is first time we've tried, get the acive column as the default
+    .getSheetData (  useActive ? -1 : parseInt(globs.divs.optionColumn.value,10)   );
+  }
+  catch (err) {
+    reportStatus (err);
+  }
+
+} 
+
+/**
+ * get current colors - get all known colors in the current sheet, along with the headings
+ */
+function getColors (useActive) {
+
+  
+  // go off and get colors from sheet
+  getColorsGoogle ( useActive, 
+    function (data) {
+      // store this for later
+      globs.data.result = data;
+
+      // redo the form
+      refreshForm();
+    }, 
+    function (error) {
+      reportStatus (e);
+    }
+  );
+  
+} 
+function resetCursor() {
+  el ('spinner').style.display = "none";
+  
+}
+function spinCursor() {
+  el ('spinner').style.display = "block";
+}
+
+/**
+ * called when we've successfully applied the changes
+ */
+function appliedSuccess (result) {
+
+  // we'll be spinning so turn it off
+  resetCursor();
+  
+  // but not really a success
+  if (result.error) {
+    reportStatus(result.error);
+  }
+  else {
+    // reset the colors using the newly applied changes
+    getColors (false);
+  }
+  
+  // open for business again
+  globs.divs.optionApply.disabled = false;
+
+}
+
+/**
+ * called when we've failed to apply the changes
+ */
+function appliedFail (result) {
+
+  // we'll be spinning so turn it off
+  resetCursor();
+ 
+  reportStatus(result.message);
+  
+  // open for business again
+  globs.divs.optionApply.disabled = false;
+  
+}
+
+/**
+ * called when safe to apply data to sheet
+ * @prepared {object} prepared the prepared data
+ */
+function applyExecute (prepared) {
+      
+  google.script.run
+    .withSuccessHandler (appliedSuccess)
+    .withFailureHandler (appliedFail)
+    .applyColors ( prepared);
+}
+
+/**
+ * see if the sheet is still in same condition as when sample was taken
+ */
+function applyCheck() {
+
+  
+  // get active sheet data
+  google.script.run.withSuccessHandler( function (result) {
+    var ok = (result.dataRange === globs.data.result.dataRange && result.id === globs.data.result.id);
+    if (!ok) {
+      reportStatus ("Current sheet has changed since loading colors - cannot apply sort") ;
+      globs.divs.optionApply.disabled = false;
+      resetCursor();
+    }
+    else {
+      //it worked .. now we can actually apply it 
+      applyExecute(prepareResult());
+    }
+  })
+  .withFailureHandler( function (err) {
+    reportStatus(err.message);
+    resetCursor();
+  })
+  .getSheetCheck ();
+
+}
+/**
+ * see if we're still on the same sheet, and if not then it's just like a fresh start
+ */
+function resetForm () {
+  
+  // get active sheet data
+  google.script.run.withSuccessHandler( function (result) {
+    var theSame = (result.dataRange === globs.data.result.dataRange && result.id === globs.data.result.id);
+    
+    if (theSame) {
+      getColors(false);
+    }
+    else {
+      // it's changed so we need to clear out everything
+        globs.data.colors = []; 
+        globs.data.result = {};
+        globs.data.labels = [];
+        globs.divs.optionHeadings.checked = true
+        getColors(true);
+    }
+    
+  })
+  .withFailureHandler( function (err) {
+    reportStatus(err.message);
+    resetCursor();
+  })
+  .getSheetCheck ();
+
+}
+/**
+ * apply execute
+ */
+function applyToSheet () {
+
+  
+  if (globs.arranger) globs.arranger.reset();
+ 
+  globs.divs.optionApply.disabled = true;
+
+
+  // look busy
+  spinCursor();
+  
+  // check its ok and apply
+  applyCheck();
+  
+
+} 
+
+/**
+ * this is about sorting out the results from a sheet query to take account of whether there was a heading
+ */
+function dealWithData () {
+
+  // redo the colors and labels based on whether there are headings
+    var headingsExist = globs.divs.optionHeadings.checked;
+    
+  
+    // uncheck headings exist if they are all blank
+    if (headingsExist && !globs.data.result.labels.some (function(d) { return d;})) {
+    
+      // but we only allow changing on first time in
+      if (!globs.data.labels.length) {
+        headingsExist = globs.divs.optionHeadings.checked = false;
+        globs.data.labels = globs.data.result.labels;
+      }
+    }
+
+    // either use the given labels, or make a,b,c type ones
+    globs.data.labels = headingsExist ? 
+        globs.data.result.labels : 
+        globs.data.labels.map(function (d,i) {
+          return columnLabelMaker(i+1);
+        });
+   
+   // if there were no headings, then we have to incorporate the heading color as a data row
+   globs.data.colors = globs.data.result.colors.slice();
+   if (!headingsExist) {
+   
+     // find it and increment the count of appearances
+     var p;
+     for (var i=0; i < globs.data.colors.length ; i++ ) {
+       if (globs.data.colors[i].color === globs.data.result.headingColor) {
+           p = globs.data.colors[i];
+       }
+     }
+     if (!p) {
+       // we dont know about the heading color so add it
+       p = {color:globs.data.result.headingColor , count:0};
+       globs.data.colors.splice(0,0,p);
+     }
+     // increment the number of times we see it
+     p.count ++;
+   }
+
+}
+
+/**
+ * prepare the result for applying to sheet
+ * @return {object[]} the result
+ */
+function prepareResult () {
+  
+  return { 
+      id:globs.data.result.id,
+      headings:globs.divs.optionHeadings.checked,
+      index:parseInt( globs.divs.optionColumn.value, 10) ,
+      contrast:globs.divs.optionContrast.checked,
+      colors:globs.arranger.getColors().shapes.map (function (d) {
+        return {
+          original: {
+            index: d.original.index,
+            color: d.original.color
+          },
+          latest: {
+            index: d.latest.index,
+            color: d.latest.color,
+            textColor: d.latest.cm.getProperties().textColor
+          }
+        };
+      })
+    };
+  
+}
+</script>
