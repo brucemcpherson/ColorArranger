@@ -1,0 +1,78 @@
+<script>
+
+   // available globally
+   var globs;
+  
+  // on doc load
+  window.addEventListener("load", function () {
+    
+   // all global settings
+    globs = {
+      defaults:{ 
+        property:'original'
+      },
+      language:'en',
+      divs:{
+        canvas:el('picker-grid'),
+        status:el('picker-status'),
+        eyeDrop:el('picker-eyeDrop'),
+        eyeDropImage:el('picker-eyeDrop-image'),
+        optionProps:el('option-props'),
+        optionAscending:el('option-ascending'),
+        optionHeadings:el('option-headings'),
+        optionColumn:el('option-column'),
+        optionContrast:el('option-contrast'),
+        optionApply:el('sheet-apply-button'),
+        optionRefresh:el('refresh-button'),
+        optionMatchOndrag:el('option-match-ondrag'),
+        dropperLabel:el('dropper-label'),
+        cursorUniverse:el('cursor-universe')
+      },
+      data: {
+        colors: [],
+        result: {},
+        labels: []
+      },
+      arranger: null,
+      cursors: {
+        normal:'default',
+        drag:'move',
+        eyeDropGrab:'url(' + Assets.images.dropper + '),-webkit-grab',
+        eyeDrop:'url(' + Assets.images.bucket + '),cell',
+        out:'not-allowed',
+        spinner:'wait',
+        grab:'pointer'
+      },
+      assets:Assets
+    };
+
+    // initial populate, will ask the sheet for which column to use
+    getColors(true);
+    
+    
+    // this provokes a reget of the data and a replot of the colors
+    globs.divs.optionColumn.addEventListener("change" , function () {
+        getColors(false);
+      } ,false);
+    
+    // this provokes a reorganization of the colors and headings
+    globs.divs.optionHeadings.addEventListener("change" , function () {
+      refreshForm();
+    } ,false);
+    
+    // this provokes a reget of the data
+    globs.divs.optionRefresh.addEventListener("click" , function () {
+        resetForm(false);
+      } ,false);
+    
+
+    // create the supported property drop down
+    buildPropsSelect();    
+    
+    // this applies all the work back to the sheet
+    globs.divs.optionApply.addEventListener("click" , applyToSheet ,false);
+
+    
+  });
+  
+</script>
