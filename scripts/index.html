@@ -1,0 +1,108 @@
+<?!= HtmlService.createHtmlOutputFromFile('styles.css').getContent(); ?>
+<div id="app">
+
+  <div class="block">
+  
+    <label for="option-column">
+      Sort column
+    </label>
+    
+    <span style="float:right;">
+      
+      <label for="option-headings">
+        Headings row
+      </label>
+      <input type="checkbox" id="option-headings" checked>
+      
+    </span>
+    
+    <br>
+    <select class="width-100" id="option-column" name="option-column">
+    </select>
+  </div>
+  
+  <div class = "block">
+    <div style="display:none;">
+    <input type="checkbox" id="option-match-ondrag">
+    <label for="option-match-ondrag">
+    Sort by nearest match while arranging 
+    </label>
+    <br>
+    </div>
+   
+    <div id = "cursor-universe">
+      
+      <div id="picker-eyeDrop" class="toggle off">
+        <img id="picker-eyeDrop-image" 
+          src="https://storage.googleapis.com/goinggas.com/public/hosting/assets/colorarranger/dropper.png">      
+      </div>
+      
+      <label for="picker-eyedrop" id="dropper-label">
+        Click on dropper to start color merging
+      </label>
+    
+      <div class="block center">
+        <canvas id="picker-grid" height="140" width="280">
+          Your browser doesnt support the color arranger
+        </canvas> 
+      </div>
+    
+    </div>
+  </div>
+  
+  <div class="block">
+    <label for="option-props">
+      Sort by
+    </label>
+
+    <span style="float:right;">
+    
+      <label for="option-ascending">
+        Reverse
+      </label>
+      <input type="checkbox" id="option-ascending">
+    
+    </span>
+    
+    <br>
+    <select class="width-100" id="option-props">
+    </select>
+
+  </div>
+
+  <div class="block">
+    <input type="checkbox" id="option-contrast" checked>
+    <label for="option-contrast">
+      Apply contrasting text color
+    </label>
+  </div>
+  
+  <div class="block" id="dialog-button-bar">
+    <button class="action" id="sheet-apply-button">Apply</button>
+    <button id="refresh-button">Reset</button>
+    <button onclick="google.script.host.close()">Close</button>
+  </div>
+  <div id="picker-status" class="status"></div>
+
+</div>
+
+<div id="spinner" class="spinner">
+    <img src="https://storage.googleapis.com/goinggas.com/public/hosting/assets/colorarranger/ajax-loader.gif"/>
+</div>
+
+<div style="display:none">
+      <img 
+        src="https://storage.googleapis.com/goinggas.com/public/hosting/assets/colorarranger/dropper.png">
+      <img 
+        src="https://storage.googleapis.com/goinggas.com/public/hosting/assets/colorarranger/bucket.png">
+</div>
+
+<?!= HtmlService.createHtmlOutputFromFile('assets.js').getContent(); ?> 
+<?!= HtmlService.createHtmlOutputFromFile('shared.js').getContent();  ?>
+<?!= HtmlService.createHtmlOutputFromFile('ColorMath.js').getContent(); ?> 
+<?!= HtmlService.createHtmlOutputFromFile('execute.js').getContent(); ?> 
+<?!= HtmlService.createHtmlOutputFromFile('ColorArranger.js').getContent(); ?> 
+<?!= HtmlService.createHtmlOutputFromFile('sorter.js').getContent(); ?> 
+<?!= HtmlService.createHtmlOutputFromFile('main.js').getContent(); ?>  
+
+
